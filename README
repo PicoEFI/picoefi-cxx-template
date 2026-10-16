@@ -1,0 +1,31 @@
+PicoEFI C++ template
+====================
+
+This is a simple C++ "hello world" program template using PicoEFI.
+For information about PicoEFI, see:
+https://github.com/PicoEFI/PicoEFI
+
+Works with clang and GCC, no need for any specialised toolchain or set up.
+Just type "make run" to build and run the hello world program in QEMU.
+
+Building also requires "git", used to fetch the dependencies (see get-deps),
+and "curl", used to download the EDK2 OVMF firmware images for "make run".
+
+Assembly files with the *.S extension are built using the same toolchain as
+the C and C++ sources. Only *.asm files, which are built for ia32 and x86_64
+alone and of which the template ships none, require "nasm".
+
+The "TOOLCHAIN" and "TOOLCHAIN_PREFIX" make variables can be used to set
+the toolchain. "TOOLCHAIN" can be set to "llvm" to use Clang/LLVM.
+For example:
+    make TOOLCHAIN=llvm
+or:
+    make TOOLCHAIN_PREFIX=x86_64-elf-
+
+The program is linked through the C++ compiler driver, using its default
+linker for GCC and LLD for Clang. A different linker can be picked by adding
+a "-fuse-ld=" option to "LDFLAGS".
+
+Link-time optimisation can be enabled by adding "-flto" to "CFLAGS" and
+"CXXFLAGS":
+    make CFLAGS='-g -O2 -pipe -flto' CXXFLAGS='-g -O2 -pipe -flto'
