@@ -164,6 +164,11 @@ override CXX_HAS_LINK_FLAG = $(shell LC_ALL=C $(CXX) $(CXXFLAGS) $(LDFLAGS) $(1)
 # ld take unknown flags for different ones (-no-pie for -n -o -pie).
 override LD_HAS_FLAG = $(shell ! LC_ALL=C $(CXX) $(CXXFLAGS) $(LDFLAGS) -Wl,--help 2>/dev/null | grep -qE '(^|[[:space:]])-?$(1)([[:space:],=[]|$$)'; echo $$?)
 
+# Check if the linker supports a -z keyword, linking nothing, as LLD lists
+# none in its help and newer GNU ld stop at --version before warning of
+# unknown ones. Any mention counts, as gold does not call it an error.
+override LD_HAS_Z_FLAG = $(shell LC_ALL=C $(CXX) $(CXXFLAGS) $(LDFLAGS) -Wl,-z,$(1) -o /dev/null 2>&1 >/dev/null | grep -qE '[^-[:alnum:]]$(1)([^-[:alnum:]]|$$)'; echo $$?)
+
 # Internal flags shared by both C and C++ compilers.
 override SHARED_FLAGS := \
     -ffreestanding \
@@ -536,6 +541,18 @@ ifeq ($(ARCH),loongarch64)
     ifneq ($(CC_LTO_HAS_ABI)$(CXX_LTO_HAS_ABI),11)
         override LDFLAGS += \
             -Wl,-plugin-opt=-target-abi=lp64s
+    endif
+endif
+
+# Pack relative relocations where the linker can, as RELR tables take a
+# fraction of the room. LLD before 15 only knows --pack-dyn-relocs.
+ifeq ($(call LD_HAS_Z_FLAG,pack-relative-relocs),1)
+    override LDFLAGS += \
+        -Wl,-z,pack-relative-relocs
+else
+    ifeq ($(call LD_HAS_FLAG,--pack-dyn-relocs),1)
+        override LDFLAGS += \
+            -Wl,--pack-dyn-relocs=relr
     endif
 endif
 
