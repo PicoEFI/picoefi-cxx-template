@@ -181,15 +181,16 @@ override SHARED_FLAGS := \
 override CFLAGS += \
     -Wall \
     -Wextra \
-    -std=gnu11
+    -std=gnu11 \
+    -fno-exceptions
 
 # Internal C++ flags that should not be changed by the user.
 override CXXFLAGS += \
     -Wall \
     -Wextra \
     -std=gnu++20 \
-    -fno-rtti \
-    -fno-exceptions
+    -fno-exceptions \
+    -fno-rtti
 
 # Internal C/C++ preprocessor flags that should not be changed by the user.
 # The freestanding headers call ia32 i686.
