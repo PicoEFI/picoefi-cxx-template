@@ -4,7 +4,7 @@
 /boot
 /freestanding-c-hdrs
 /freestanding-cxx-hdrs
-/cc-runtime
+/freestanding-lgrt
 /picoefi
 /edk2-ovmf-bins
 /edk2-ovmf-bins.tar.gz
