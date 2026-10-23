@@ -205,7 +205,7 @@ override CPPFLAGS_C := \
     -I picoefi/inc \
     -isystem freestanding-c-hdrs/include \
     $(CPPFLAGS) \
-    -MMD \
+    -MD \
     -MP
 
 # Internal C++ only preprocessor flags.
