@@ -199,12 +199,11 @@ override CXXFLAGS += \
     -fno-rtti
 
 # Internal C/C++ preprocessor flags that should not be changed by the user.
-# The freestanding headers call ia32 i686.
 override CPPFLAGS_C := \
     -nostdinc \
     -I src \
     -I picoefi/inc \
-    -isystem freestanding-c-hdrs/$(subst ia32,i686,$(ARCH))/include \
+    -isystem freestanding-c-hdrs/include \
     $(CPPFLAGS) \
     -MMD \
     -MP
@@ -212,7 +211,7 @@ override CPPFLAGS_C := \
 # Internal C++ only preprocessor flags.
 override CPPFLAGS_CXX := \
     $(CPPFLAGS_C) \
-    -isystem freestanding-cxx-hdrs/$(subst ia32,i686,$(ARCH))/include
+    -isystem freestanding-cxx-hdrs/include
 
 ifneq ($(filter $(ARCH),ia32 x86_64),)
     # Internal nasm flags that should not be changed by the user.
