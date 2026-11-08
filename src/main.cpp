@@ -64,7 +64,9 @@ void hcf() {
 }
 
 // OutputString takes a non-const string, so the message is a writable array.
-char16_t hello_message[] = u"Hello world\r\n";
+char16_t message[] = u"\r\n"
+                     u"Hello world\r\n"
+                     u"Press any key to return to firmware...";
 
 }
 
@@ -77,11 +79,24 @@ extern "C" EFI_STATUS efi_main(EFI_HANDLE, EFI_SYSTEM_TABLE *system_table) {
         (*--ctor)();
     }
 
-    // Print the message to the firmware's console.
+    // Print a message and a prompt to the firmware's console, after a newline,
+    // as some firmware does not end its own messages with one.
     system_table->ConOut->OutputString(
-        system_table->ConOut, reinterpret_cast<EFI_CHAR16 *>(hello_message)
+        system_table->ConOut, reinterpret_cast<EFI_CHAR16 *>(message)
     );
 
-    // We're done, just hang...
-    hcf();
+    // Disable the 5-minute watchdog timer that the boot manager arms before
+    // starting the program, which would reset the system during a long wait.
+    system_table->BootServices->SetWatchdogTimer(0, 0, 0, nullptr);
+
+    // Wait for a key press, ignoring any made before the prompt, then return
+    // to the firmware.
+    system_table->ConIn->Reset(system_table->ConIn, EFI_FALSE);
+    EFI_INPUT_KEY key;
+    EFI_UINTN index;
+    while (system_table->ConIn->ReadKeyStroke(system_table->ConIn, &key) == EFI_NOT_READY) {
+        system_table->BootServices->WaitForEvent(1, &system_table->ConIn->WaitForKey, &index);
+    }
+
+    return EFI_SUCCESS;
 }
