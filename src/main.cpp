@@ -9,36 +9,55 @@ namespace {
 }
 
 // The following stubs are required by the Itanium C++ ABI (the one we use,
-// regardless of the "Itanium" nomenclature).
-// Like the memory functions in memory.cpp, these stubs can be moved to a different .cpp file,
-// but should not be removed, unless you know what you are doing.
+// regardless of the "Itanium" nomenclature). Like the memory functions in
+// memory.cpp, these stubs can be moved to a different .cpp file, but should
+// not be removed, unless you know what you are doing.
 extern "C" {
-    int __cxa_atexit(void (*)(void *), void *, void *) { return 0; }
-    void __cxa_pure_virtual() { hcf(); }
-    void __cxa_deleted_virtual() { hcf(); }
-    void *__dso_handle;
-    // Not thread safe: replace before statics can be initialised concurrently.
-    int __cxa_guard_acquire(std::uint64_t *guard) { return *reinterpret_cast<std::uint8_t *>(guard) == 0; }
-    void __cxa_guard_release(std::uint64_t *guard) { *reinterpret_cast<std::uint8_t *>(guard) = 1; }
+
+int __cxa_atexit(void (*)(void *), void *, void *) {
+    return 0;
+}
+
+void __cxa_pure_virtual() {
+    hcf();
+}
+
+void __cxa_deleted_virtual() {
+    hcf();
+}
+
+void *__dso_handle;
+
+// Not thread safe: replace before statics can be initialised concurrently.
+int __cxa_guard_acquire(std::uint64_t *guard) {
+    return *reinterpret_cast<std::uint8_t *>(guard) == 0;
+}
+
+void __cxa_guard_release(std::uint64_t *guard) {
+    *reinterpret_cast<std::uint8_t *>(guard) = 1;
+}
+
 }
 
 // Extern declarations for global constructors array.
 extern void (*__init_array_start[])();
 extern void (*__init_array_end[])();
 
-// The same for .ctors, which Clang 10 and older emit for x86 and which runs backwards.
+// The same for .ctors, which Clang 10 and older emit for x86 and which runs
+// backwards.
 extern void (*__ctors_start[])();
 extern void (*__ctors_end[])();
 
+// Halt and catch fire function.
 namespace {
 
 void hcf() {
     for (;;) {
-#if defined (__x86_64__) || defined (__i386__)
+#if defined(__x86_64__) || defined(__i386__)
         asm ("hlt");
-#elif defined (__aarch64__) || defined (__riscv)
+#elif defined(__aarch64__) || defined(__riscv)
         asm ("wfi");
-#elif defined (__loongarch64)
+#elif defined(__loongarch64)
         asm ("idle 0");
 #endif
     }
@@ -49,15 +68,20 @@ char16_t hello_message[] = u"Hello world\r\n";
 
 }
 
-extern "C" EFI_STATUS efi_main(EFI_HANDLE, EFI_SYSTEM_TABLE *SystemTable) {
+extern "C" EFI_STATUS efi_main(EFI_HANDLE, EFI_SYSTEM_TABLE *system_table) {
     // Call global constructors.
-    for (void (**ctor)() = __init_array_start; ctor < __init_array_end;) {
+    for (void (**ctor)() = __init_array_start; ctor < __init_array_end; ) {
         (*ctor++)();
     }
-    for (void (**ctor)() = __ctors_end; ctor > __ctors_start;) {
+    for (void (**ctor)() = __ctors_end; ctor > __ctors_start; ) {
         (*--ctor)();
     }
 
-    SystemTable->ConOut->OutputString(SystemTable->ConOut, reinterpret_cast<EFI_CHAR16 *>(hello_message));
+    // Print the message to the firmware's console.
+    system_table->ConOut->OutputString(
+        system_table->ConOut, reinterpret_cast<EFI_CHAR16 *>(hello_message)
+    );
+
+    // We're done, just hang...
     hcf();
 }
