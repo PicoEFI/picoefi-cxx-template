@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <cstdint>
 #include <efi.h>
 
@@ -63,14 +64,15 @@ void hcf() {
     }
 }
 
-// OutputString takes a non-const string, so the message is a writable array.
+// output_string() takes a non-const string, so the message is a writable
+// array.
 char16_t message[] = u"\r\n"
                      u"Hello world\r\n"
                      u"Press any key to return to firmware...";
 
 }
 
-extern "C" EFI_STATUS efi_main(EFI_HANDLE, EFI_SYSTEM_TABLE *system_table) {
+extern "C" efi_status efi_main(efi_handle, efi_system_table *system_table) {
     // Call global constructors.
     for (void (**ctor)() = __init_array_start; ctor < __init_array_end; ) {
         (*ctor++)();
@@ -81,21 +83,23 @@ extern "C" EFI_STATUS efi_main(EFI_HANDLE, EFI_SYSTEM_TABLE *system_table) {
 
     // Print a message and a prompt to the firmware's console, after a newline,
     // as some firmware does not end its own messages with one.
-    system_table->ConOut->OutputString(
-        system_table->ConOut, reinterpret_cast<EFI_CHAR16 *>(message)
+    system_table->con_out->output_string(
+        system_table->con_out, reinterpret_cast<std::uint16_t *>(message)
     );
 
     // Disable the 5-minute watchdog timer that the boot manager arms before
     // starting the program, which would reset the system during a long wait.
-    system_table->BootServices->SetWatchdogTimer(0, 0, 0, nullptr);
+    system_table->boot_services->set_watchdog_timer(0, 0, 0, nullptr);
 
     // Wait for a key press, ignoring any made before the prompt, then return
     // to the firmware.
-    system_table->ConIn->Reset(system_table->ConIn, EFI_FALSE);
-    EFI_INPUT_KEY key;
-    EFI_UINTN index;
-    while (system_table->ConIn->ReadKeyStroke(system_table->ConIn, &key) == EFI_NOT_READY) {
-        system_table->BootServices->WaitForEvent(1, &system_table->ConIn->WaitForKey, &index);
+    system_table->con_in->reset(system_table->con_in, false);
+    efi_input_key key;
+    std::size_t index;
+    while (system_table->con_in->read_key_stroke(system_table->con_in, &key) == EFI_NOT_READY) {
+        system_table->boot_services->wait_for_event(
+            1, &system_table->con_in->wait_for_key, &index
+        );
     }
 
     return EFI_SUCCESS;
