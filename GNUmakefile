@@ -275,10 +275,7 @@ ifeq ($(ARCH),ia32)
     override SHARED_FLAGS += \
         -m32 \
         -march=i686 \
-        -mno-mmx
-    # PicoEFI lays out 64-bit fields aligned to 8 bytes, as UEFI does, which
-    # the IA-32 ABI does only with this flag.
-    override SHARED_FLAGS += \
+        -mno-mmx \
         -malign-double
     override LDFLAGS += \
         -Wl,-m,elf_i386
@@ -428,6 +425,18 @@ ifeq ($(ARCH),ia32)
     # no name for it, where only a long double could reach the x87.
     override CFLAGS += $(call CC_FLAG,-mno-80387)
     override CXXFLAGS += $(call CXX_FLAG,-mno-80387)
+    # Clang below 9 takes -malign-double and ignores it, which lays out
+    # every firmware structure with a 64 bit member wrong, so check the
+    # alignment each compiler gives rather than the flag. G++ has no
+    # _Static_assert, so C++ is given static_assert instead.
+    override CC_ALIGNS_64BIT := $(shell ! printf 'struct s { char c; long long x; };\n_Static_assert(sizeof(struct s) == 16, "");\n' | $(CC) $(CFLAGS) -c -x c - -o /dev/null 2>/dev/null; echo $$?)
+    ifneq ($(CC_ALIGNS_64BIT),1)
+        $(call TOOLCHAIN_ERROR,The C compiler does not align 64 bit types to 8 bytes)
+    endif
+    override CXX_ALIGNS_64BIT := $(shell ! printf 'struct s { char c; long long x; };\nstatic_assert(sizeof(struct s) == 16, "");\n' | $(CXX) $(CXXFLAGS) -c -x c++ - -o /dev/null 2>/dev/null; echo $$?)
+    ifneq ($(CXX_ALIGNS_64BIT),1)
+        $(call TOOLCHAIN_ERROR,The C++ compiler does not align 64 bit types to 8 bytes)
+    endif
 endif
 ifeq ($(ARCH),x86_64)
     override CFLAGS += $(call CC_FLAG,-fcf-protection=none)
