@@ -2,17 +2,17 @@
 #include <cstdint>
 #include <efi.h>
 
-// Halt and catch fire function.
 namespace {
 
+// Halt and catch fire function.
 [[noreturn]] void hcf() {
     for (;;) {
 #if defined(__x86_64__) || defined(__i386__)
-        asm ("hlt");
+        asm volatile ("hlt" ::: "memory");
 #elif defined(__aarch64__) || defined(__riscv)
-        asm ("wfi");
+        asm volatile ("wfi" ::: "memory");
 #elif defined(__loongarch64)
-        asm ("idle 0");
+        asm volatile ("idle 0" ::: "memory");
 #endif
     }
 }
@@ -59,7 +59,6 @@ extern void (*__init_array_end[])();
 extern void (*__ctors_start[])();
 extern void (*__ctors_end[])();
 
-// Halt and catch fire function.
 namespace {
 
 // output_string() takes a non-const string, so the message is a writable
