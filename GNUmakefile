@@ -194,7 +194,11 @@ override LD_HAS_Z_FLAG = $(shell LC_ALL=C $(CXX) $(CXXFLAGS) $(LDFLAGS) -Wl,-z,$
 # Internal flags shared by both C and C++ compilers.
 override SHARED_FLAGS := \
     -ffreestanding \
+    -fno-builtin \
+    -fno-asynchronous-unwind-tables \
+    -fno-unwind-tables \
     -fno-common \
+    -fno-strict-aliasing \
     -fno-stack-protector \
     -fno-stack-check \
     -fshort-wchar \
@@ -223,6 +227,7 @@ override CXXFLAGS += \
 # Internal C/C++ preprocessor flags that should not be changed by the user.
 override CPPFLAGS_C := \
     -nostdinc \
+    -include src/hidden.h \
     -I src \
     -I picoefi/include \
     -isystem freestanding-c-hdrs/include \
@@ -297,10 +302,13 @@ ifeq ($(ARCH),x86_64)
         $(NASMFLAGS)
 endif
 ifeq ($(ARCH),aarch64)
+    # The UEFI AArch64 binding reserves x18.
     override SHARED_FLAGS += \
         -mcpu=generic \
         -march=armv8-a+nofp+nosimd \
-        -mcmodel=small
+        -mlittle-endian \
+        -mcmodel=small \
+        -ffixed-x18
     override LDFLAGS += \
         -Wl,-m,aarch64elf
 endif
@@ -445,10 +453,26 @@ ifeq ($(ARCH),x86_64)
     # no name for it, where only a long double could reach the x87.
     override CFLAGS += $(call CC_FLAG,-mno-80387)
     override CXXFLAGS += $(call CXX_FLAG,-mno-80387)
+    # Older GCCs need this for ms_abi calls. Clang has no such flag.
+    ifneq ($(CC_IS_CLANG),1)
+        override CFLAGS += \
+            -maccumulate-outgoing-args
+    endif
+    ifneq ($(CXX_IS_CLANG),1)
+        override CXXFLAGS += \
+            -maccumulate-outgoing-args
+    endif
 endif
 ifeq ($(ARCH),aarch64)
     override CFLAGS += $(call CC_FLAG,-mbranch-protection=none)
     override CXXFLAGS += $(call CXX_FLAG,-mbranch-protection=none)
+    # Clang does not take this ABI name.
+    ifneq ($(CC_IS_CLANG),1)
+        override CFLAGS += $(call CC_FLAG,-mabi=lp64)
+    endif
+    ifneq ($(CXX_IS_CLANG),1)
+        override CXXFLAGS += $(call CXX_FLAG,-mabi=lp64)
+    endif
     # Only the linker can work around Cortex-A53 erratum 843419, so
     # require one that can.
     ifeq ($(call LD_HAS_FLAG,--fix-cortex-a53-843419),1)
@@ -499,6 +523,10 @@ ifeq ($(ARCH),riscv64)
                 -mcmodel=small
         endif
     endif
+    # The UEFI RISC-V binding forbids relying on unaligned accesses.
+    # Compilers without the flag never make them.
+    override CFLAGS += $(call CC_FLAG,-mstrict-align)
+    override CXXFLAGS += $(call CXX_FLAG,-mstrict-align)
     # Keep linker relaxation away from gp, which nothing sets up. Linkers
     # without the flag only use gp if the script defines __global_pointer$.
     ifeq ($(call LD_HAS_FLAG,--no-relax-gp),1)
