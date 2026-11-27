@@ -57,6 +57,11 @@ clone_repo_commit \
     fbc37e3babf39f464e6f49401e25bab71cc7f938
 
 clone_repo_commit \
+    https://github.com/osdev0/gmake-toolchain-helper.git \
+    gmake-toolchain-helper \
+    4ca08736be746ee7ccb2c42959144afd99a02434
+
+clone_repo_commit \
     https://github.com/PicoEFI/PicoEFI.git \
     picoefi \
     9065da08260729e932531110a5a7fb90c0022aa9
